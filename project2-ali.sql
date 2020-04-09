@@ -247,19 +247,19 @@ CREATE TABLE IF NOT EXISTS reading_info(
     observation_count INT UNSIGNED,
     observation_percent TINYINT UNSIGNED,
 	num_obs_below_mdl TINYINT UNSIGNED,
-    arithmetic_mean DECIMAL(4,2),
-    arithmetic_standard_dev DECIMAL(4,2),
-    first_max_value DECIMAL(4,2),
+    arithmetic_mean DECIMAL(11,6),
+    arithmetic_standard_dev DECIMAL(11,6),
+    first_max_value DECIMAL(11,6),
     first_max_datetime DATETIME,
-    second_max_value DECIMAL(4,2),
+    second_max_value DECIMAL(11,6),
     second_max_datetime DATETIME,
-    third_max_value DECIMAL(4,2),
+    third_max_value DECIMAL(11,6),
     third_max_datetime DATETIME,
-    fourth_max_value DECIMAL(4,2),
+    fourth_max_value DECIMAL(11,6),
     fourth_max_datetime DATETIME,
-    first_max_non_overlapping_value DECIMAL(4,2),
+    first_max_non_overlapping_value DECIMAL(11,6),
 	first_no_max_datetime DATETIME,
-    second_max_non_overlapping_value DECIMAL(4,2),
+    second_max_non_overlapping_value DECIMAL(11,6),
 	second_no_max_datetime DATETIME,
     ninety_nine_percentile DECIMAL(11,6),
     ninety_eight_percentile DECIMAL(11,6),
@@ -268,7 +268,12 @@ CREATE TABLE IF NOT EXISTS reading_info(
 	seventy_five_percentile DECIMAL(11,6),
     fifty_percentile DECIMAL(11,6),
     ten_percentile DECIMAL(11,6),
-    pollutant_standard VARCHAR(25)
+    pollutant_standard VARCHAR(100),
+    PRIMARY KEY(id),
+	CONSTRAINT fk_id
+		FOREIGN KEY(id) 
+        REFERENCES measurement_info(id)
+        ON UPDATE CASCADE
 );
 
 -- INSERT INTO reading_info
@@ -304,19 +309,19 @@ SELECT
     observation_count,
     observation_percent,
 	num_obs_below_mdl,
-    IF(arithmetic_mean='',NULL,CAST(arithmetic_mean as decimal(4,2))) as arithmetic_mean,
-    IF(arithmetic_standard_dev='',NULL,CAST(arithmetic_standard_dev as decimal(4,2))) as arithmetic_standard_dev,
-	IF(first_max_value='',NULL,CAST(first_max_value as decimal(4,2))) as first_max_value,
-    first_max_datetime,
-    IF(second_max_value='',NULL,CAST(second_max_value as decimal(4,2))) as second_max_value,
-    second_max_datetime,
-    IF(third_max_value='',NULL,CAST(third_max_value as decimal(4,2))) as third_max_value,
+    IF(arithmetic_mean='',NULL,CAST(arithmetic_mean as decimal(11,6))) as arithmetic_mean,
+    IF(arithmetic_standard_dev='',NULL,CAST(arithmetic_standard_dev as decimal(11,6))) as arithmetic_standard_dev,
+	IF(first_max_value='',NULL,CAST(first_max_value as decimal(11,6))) as first_max_value,
+    IF(first_max_datetime='',NULL,CAST(second_no_max_datetime as DATETIME)) as first_max_datetime,
+    IF(second_max_value='',NULL,CAST(second_max_value as decimal(11,6))) as second_max_value,
+    IF(second_max_datetime='',NULL,CAST(second_no_max_datetime as DATETIME)) as second_max_datetime,
+    IF(third_max_value='',NULL,CAST(third_max_value as decimal(11,6))) as third_max_value,
     IF(third_max_datetime='',NULL,CAST(third_max_datetime as DATETIME)) as third_max_datetime,
-    IF(fourth_max_value='',NULL,CAST(fourth_max_value as decimal(4,2))) as fourth_max_value,
+    IF(fourth_max_value='',NULL,CAST(fourth_max_value as decimal(11,6))) as fourth_max_value,
     IF(fourth_max_datetime='',NULL,CAST(fourth_max_datetime as DATETIME)) as fourth_max_datetime,
-    IF(first_max_non_overlapping_value='',NULL,CAST(first_max_non_overlapping_value as decimal(4,2))) as first_max_non_overlapping_value,
+    IF(first_max_non_overlapping_value='',NULL,CAST(first_max_non_overlapping_value as decimal(11,6))) as first_max_non_overlapping_value,
     IF(first_no_max_datetime='',NULL,CAST(first_no_max_datetime as DATETIME)) as first_no_max_datetime,
-	IF(second_max_non_overlapping_value='',NULL,CAST(second_max_non_overlapping_value as decimal(4,2))) as second_max_non_overlapping_value,
+	IF(second_max_non_overlapping_value='',NULL,CAST(second_max_non_overlapping_value as decimal(11,6))) as second_max_non_overlapping_value,
 	IF(second_no_max_datetime='',NULL,CAST(second_no_max_datetime as DATETIME)) as second_no_max_datetime,
     ninety_nine_percentile,
     ninety_eight_percentile,
@@ -348,7 +353,12 @@ CREATE TABLE IF NOT EXISTS validation_info(
 	primary_exceedance_count INT UNSIGNED,
 	secondary_exceedance_count INT UNSIGNED,
 	certification_indicator VARCHAR(50),
-	event_type VARCHAR(50)
+	event_type VARCHAR(50),
+    PRIMARY KEY(id),
+    CONSTRAINT fk_id
+		FOREIGN KEY(id) 
+        REFERENCES measurement_info(id)
+        ON UPDATE CASCADE
 );
 
 INSERT INTO validation_info(
@@ -369,8 +379,8 @@ SELECT
 	required_day_count,
 	exceptional_data_count,
 	_data_count,
-	IF(primary_exceedance_count='',NULL,CAST(primary_exceedance_count as INT)) as primary_exceedance_count,
-	IF(secondary_exceedance_count='',NULL,CAST(secondary_exceedance_count as INT)) as secondary_exceedance_count,
+	IF(primary_exceedance_count ='',NULL, CAST(primary_exceedance_count as FLOAT)) as primary_exceedance_count,
+	IF(secondary_exceedance_count ='',NULL, CAST(secondary_exceedance_count as FLOAT)) as secondary_exceedance_count,
 	certification_indicator,
 	event_type
 FROM mega_table;
