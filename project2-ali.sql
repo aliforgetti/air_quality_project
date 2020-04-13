@@ -127,21 +127,27 @@ IGNORE 1 ROWS
 SELECT * FROM mega_table
 LIMIT 10;
 
+-- Deleting all instanes of recordings from Canada
+SET SQL_SAFE_UPDATES = 0;
+DELETE FROM mega_table
+WHERE state_code = 'CC';
+SET SQL_SAFE_UPDATES = 1;
 -- ------------------------------------------------------------------------------------------
 -- LOCATION INFORMATION 
 -- Combination of state_code, county_code and site_num determine all of the other variables
 -- Split state code and state name into separate tables. 
+SET SESSION sql_mode = '';
  
  -- 1. 
 DROP TABLE IF EXISTS state_info;
 CREATE TABLE IF NOT EXISTS state_info(
- 	state_code VARCHAR(2),
+ 	state_code SMALLINT,
     state_name VARCHAR(20),
     PRIMARY KEY(state_code));
     
 -- INSERT INTO state_info
 INSERT INTO state_info(state_code,state_name)
-SELECT distinct(state_code), state_name
+SELECT DISTINCT(state_code), state_name
 FROM mega_table
 ORDER BY state_code;
 
@@ -149,20 +155,20 @@ ORDER BY state_code;
 SELECT *
 FROM state_info;
 
--- 3
+
 -- Each row is a unique combination of state_code, county_code and site num
 DROP TABLE IF EXISTS loc_info;
 CREATE TABLE IF NOT EXISTS loc_info(
-	state_code VARCHAR(2),
-    county_code SMALLINT UNSIGNED,
-	site_num INT UNSIGNED DEFAULT NULL,
+	state_code SMALLINT NOT NULL,
+    county_code SMALLINT UNSIGNED NOT NULL,
+	site_num INT UNSIGNED ,
     county_name VARCHAR(50),
     city_name VARCHAR(50),
     latitude DECIMAL(11,6),
     longitude DECIMAL(11,6),
     local_site_name VARCHAR(150),
     cbsa_name VARCHAR(50), -- this may need to be split
-    address VARCHAR(150), -- this may need to be split or maybe just dropped
+    -- address VARCHAR(150), -- this may need to be split or maybe just dropped
 	PRIMARY KEY(state_code, county_code, site_num),
 	CONSTRAINT fk_state_code
 		FOREIGN KEY(state_code)
@@ -171,7 +177,7 @@ CREATE TABLE IF NOT EXISTS loc_info(
 	);
 
 -- INSERT INTO loc_info
-INSERT INTO loc_info(state_code, county_code, site_num, city_name, county_name, latitude, longitude, local_site_name, cbsa_name, address)
+INSERT INTO loc_info(state_code, county_code, site_num, city_name, county_name, latitude, longitude, local_site_name, cbsa_name)
 SELECT distinct
 	state_code, 
 	county_code,
@@ -181,8 +187,8 @@ SELECT distinct
     IF(latitude='',NULL,CAST(latitude as decimal(11,6))) as latitude,
     IF(longitude='',NULL,CAST(longitude as decimal(11,6))) as longitude,
 	local_site_name, 
-	cbsa_name, 
-	address
+	cbsa_name
+	-- address
 FROM mega_table;
 
 -- VERIFY CORRECT INSERT
@@ -191,41 +197,61 @@ from loc_info
 order by state_code, county_code, site_num;
 
 -- ------------------------------------------------------------------------------------------
--- MEASUREMENT INFORMATION 
--- 'id' determines which measurement we are looking at
+-- MEASUREMENT INFORMATION and PARAMETER INFO
+-- each unique combination of parameter_code and poc determine the parameter name, units of measure and metric used. 
+-- 'id' determines which measurement we are looking at for the measurement info table
 
+DROP TABLE IF EXISTS parameter_info;
+CREATE TABLE IF NOT EXISTS parameter_info(
+    parameter_code INT UNSIGNED,
+    poc TINYINT UNSIGNED,
+    parameter_name VARCHAR(100),
+	units_of_measure VARCHAR(150),
+	PRIMARY KEY(parameter_code, poc));
+
+-- Insert into parameter_info table
+INSERT INTO parameter_info(parameter_code, poc, parameter_name, units_of_measure)
+SELECT distinct
+	parameter_code, 
+    poc, 
+    parameter_name, 
+    units_of_measure
+FROM mega_table;
+
+select * from parameter_info;
+
+-- Creation of measurement info
 DROP TABLE IF EXISTS measurement_info;
 CREATE TABLE IF NOT EXISTS measurement_info(
 	id INT UNSIGNED,
     parameter_code INT UNSIGNED,
     poc TINYINT UNSIGNED,
 	datum VARCHAR(10),
-    parameter_name VARCHAR(100),
 	method_name VARCHAR(200),
-    units_of_measure VARCHAR(150),
 	year INT UNSIGNED,
     sample_duration VARCHAR(100),
-    metric_used VARCHAR(100),
-	state_code VARCHAR(2),
+	metric_used VARCHAR(100),
+	state_code SMALLINT,
     county_code SMALLINT UNSIGNED,
 	site_num INT UNSIGNED DEFAULT NULL,
     PRIMARY KEY(id),
 	CONSTRAINT fk_state_county_site
 		FOREIGN KEY(state_code, county_code, site_num)
         REFERENCES loc_info(state_code, county_code, site_num)
+        ON UPDATE CASCADE,
+	CONSTRAINT fk_parameter_poc
+		FOREIGN KEY(parameter_code, poc)
+        REFERENCES parameter_info(parameter_code, poc)
         ON UPDATE CASCADE
 	);
     
-    
 -- INSERT INTO measurement_info
-INSERT INTO measurement_info(id, parameter_code, poc, datum, parameter_name, method_name, units_of_measure, year, sample_duration, metric_used, state_code, county_code, site_num)
+INSERT INTO measurement_info(id, parameter_code, poc, datum, method_name, year, sample_duration, metric_used, state_code, county_code, site_num)
 SELECT id, 
 	parameter_code, 
     poc, 
     datum, 
-    parameter_name, 
     method_name, 
-    units_of_measure,
     year, 
     sample_duration, 
     metric_used, 
@@ -236,10 +262,14 @@ FROM mega_table;
 
 -- VERIFY CORRECT INSERT
 SELECT *
-FROM measurement_info;
+FROM measurement_info
+where parameter_code = 42401;
 
 -- ------------------------------------------------------------------------------------------
 -- READING INFORMATION 
+
+SET SQL_MODE = '';
+
 
 DROP TABLE IF EXISTS reading_info;
 CREATE TABLE IF NOT EXISTS reading_info(
@@ -250,19 +280,19 @@ CREATE TABLE IF NOT EXISTS reading_info(
     arithmetic_mean DECIMAL(11,6),
     arithmetic_standard_dev DECIMAL(11,6),
     first_max_value DECIMAL(11,6),
-    first_max_datetime DATETIME,
+    first_max_datetime datetime DEFAULT NULL,
     second_max_value DECIMAL(11,6),
-    second_max_datetime DATETIME,
+    second_max_datetime DATETIME DEFAULT NULL,
     third_max_value DECIMAL(11,6),
-    third_max_datetime DATETIME,
+	third_max_datetime DATETIME DEFAULT NULL, 
     fourth_max_value DECIMAL(11,6),
-    fourth_max_datetime DATETIME,
-    first_max_non_overlapping_value DECIMAL(11,6),
-	first_no_max_datetime DATETIME,
-    second_max_non_overlapping_value DECIMAL(11,6),
-	second_no_max_datetime DATETIME,
-    ninety_nine_percentile DECIMAL(11,6),
-    ninety_eight_percentile DECIMAL(11,6),
+    fourth_max_datetime DATETIME DEFAULT NULL,
+--  first_max_non_overlapping_value DECIMAL(11,6), THESE TABLES ARE DROPPED BECAUSE THEY BREAK THE 1NF AND MOST OF THEM ARE NULL
+--  first_no_max_datetime DATETIME DEFAULT NULL,
+--  second_max_non_overlapping_value DECIMAL(11,6),
+--  second_no_max_datetime DATETIME DEFAULT NULL,
+--  ninety_nine_percentile DECIMAL(11,6),
+--  ninety_eight_percentile DECIMAL(11,6),
     ninety_five_percentile DECIMAL(11,6),
     ninety_percentile DECIMAL(11,6),
 	seventy_five_percentile DECIMAL(11,6),
@@ -289,22 +319,22 @@ INSERT INTO reading_info(
     second_max_value,
     second_max_datetime,
     third_max_value,
-    third_max_datetime,
+	third_max_datetime,
     fourth_max_value,
-    fourth_max_datetime,
-    first_max_non_overlapping_value,
-	first_no_max_datetime,
-    second_max_non_overlapping_value,
-	second_no_max_datetime,
-    ninety_nine_percentile,
-    ninety_eight_percentile,
+	fourth_max_datetime,
+--  first_max_non_overlapping_value,
+--  first_no_max_datetime,
+--  second_max_non_overlapping_value,
+--  second_no_max_datetime,
+--  ninety_nine_percentile,
+--  ninety_eight_percentile,
     ninety_five_percentile,
     ninety_percentile,
 	seventy_five_percentile,
     fifty_percentile,
     ten_percentile,
     pollutant_standard)
-SELECT 
+SELECT 	
 	id,
     observation_count,
     observation_percent,
@@ -312,19 +342,23 @@ SELECT
     IF(arithmetic_mean='',NULL,CAST(arithmetic_mean as decimal(11,6))) as arithmetic_mean,
     IF(arithmetic_standard_dev='',NULL,CAST(arithmetic_standard_dev as decimal(11,6))) as arithmetic_standard_dev,
 	IF(first_max_value='',NULL,CAST(first_max_value as decimal(11,6))) as first_max_value,
-    IF(first_max_datetime='',NULL,CAST(second_no_max_datetime as DATETIME)) as first_max_datetime,
+--  IF(first_max_datetime='',NULL,CAST(first_max_datetime as datetime)) as first_max_datetime,
+    first_max_datetime,
     IF(second_max_value='',NULL,CAST(second_max_value as decimal(11,6))) as second_max_value,
-    IF(second_max_datetime='',NULL,CAST(second_no_max_datetime as DATETIME)) as second_max_datetime,
+--  IF(second_max_datetime='',NULL,CAST(second_max_datetime as DATETIME)) as second_max_datetime,
+    second_max_datetime,
     IF(third_max_value='',NULL,CAST(third_max_value as decimal(11,6))) as third_max_value,
-    IF(third_max_datetime='',NULL,CAST(third_max_datetime as DATETIME)) as third_max_datetime,
+--  IF(third_max_datetime='',NULL,CAST(third_max_datetime as DATETIME)) as third_max_datetime,
+    third_max_datetime,
     IF(fourth_max_value='',NULL,CAST(fourth_max_value as decimal(11,6))) as fourth_max_value,
-    IF(fourth_max_datetime='',NULL,CAST(fourth_max_datetime as DATETIME)) as fourth_max_datetime,
-    IF(first_max_non_overlapping_value='',NULL,CAST(first_max_non_overlapping_value as decimal(11,6))) as first_max_non_overlapping_value,
-    IF(first_no_max_datetime='',NULL,CAST(first_no_max_datetime as DATETIME)) as first_no_max_datetime,
-	IF(second_max_non_overlapping_value='',NULL,CAST(second_max_non_overlapping_value as decimal(11,6))) as second_max_non_overlapping_value,
-	IF(second_no_max_datetime='',NULL,CAST(second_no_max_datetime as DATETIME)) as second_no_max_datetime,
-    ninety_nine_percentile,
-    ninety_eight_percentile,
+--  IF(fourth_max_datetime=0000-00-00 00:00:00,NULL,CAST(fourth_max_datetime as datetime)) as fourth_max_datetime,
+    fourth_max_datetime,
+--  IF(first_max_non_overlapping_value='',NULL,CAST(first_max_non_overlapping_value as decimal(11,6))) as first_max_non_overlapping_value,
+--  IF(first_no_max_datetime='0000-00-00 00:00:00',NULL,CAST(first_no_max_datetime as DATETIME)) as first_no_max_datetime,
+--  IF(second_max_non_overlapping_value='',NULL,CAST(second_max_non_overlapping_value as decimal(11,6))) as second_max_non_overlapping_value,
+--  IF(second_no_max_datetime='0000-00-00 00:00:00',NULL,CAST(second_no_max_datetime as DATETIME)) as second_no_max_datetime,
+--  ninety_nine_percentile,
+--  ninety_eight_percentile,
     ninety_five_percentile,
     ninety_percentile,
 	seventy_five_percentile,
@@ -355,7 +389,7 @@ CREATE TABLE IF NOT EXISTS validation_info(
 	certification_indicator VARCHAR(50),
 	event_type VARCHAR(50),
     PRIMARY KEY(id),
-    CONSTRAINT fk_id
+    CONSTRAINT fk_idd
 		FOREIGN KEY(id) 
         REFERENCES measurement_info(id)
         ON UPDATE CASCADE
@@ -384,6 +418,74 @@ SELECT
 	certification_indicator,
 	event_type
 FROM mega_table;
+
+-- VERIFY CORRECT INSERT
+select *
+from validation_info;
+
+ 
+-- TRIGGERS
+DROP TRIGGER IF EXISTS verifyExists;
+delimiter //
+CREATE TRIGGER verifyExists 
+BEFORE INSERT ON state_info
+FOR EACH ROW
+BEGIN
+	IF NEW.state_code in (
+    	select state_code
+        From state_info
+        where (NEW.state_code = state_info.state_code)) 
+        THEN 
+        SIGNAL SQLSTATE 'HY000'
+		SET MESSAGE_TEXT =  'INSERT NOT ALLOWED - VALUE REPEATED';
+	END IF;
+    END //
+delimiter ;
+
+INSERT INTO state_info
+values(1,'California');
+
+-- TRIGGER TO INSERT INTO THE LOC INFO TABLE
+
+DROP TRIGGER IF EXISTS verifyExistsLoc;
+delimiter //
+CREATE TRIGGER verifyExistsLoc
+BEFORE INSERT ON loc_info
+FOR EACH ROW
+BEGIN
+	IF (NEW.state_code, NEW.county_code, NEW.site_num) in (
+    	select state_code, county_code, site_num
+        From loc_info
+        where (NEW.state_code = loc_info.state_code) AND 
+        (NEW.county_code = loc_info.county_code) AND
+        (NEW.site_num = loc_info.site_num))
+        THEN 
+        SIGNAL SQLSTATE 'HY000'
+		SET MESSAGE_TEXT =  'INSERT NOT ALLOWED - VALUE REPEATED';
+	END IF;
+    END //
+delimiter ;
+
+SELECT * 
+FROM loc_info;
+
+INSERT INTO loc_info
+VALUES(20,57,1, 'Ford', 'Dodge_City', 90, 100,'90','pol');
+
+-- CREATE VIEW WITH ALL IMPORTANT COLUMNS TO USE
+
+DROP VIEW last_four;
+CREATE VIEW last_four AS
+SELECT id, state_name, year, latitude, longitude, parameter_name, arithmetic_mean
+FROM loc_info INNER JOIN state_info USING(state_code)
+	INNER JOIN measurement_info USING(state_code, county_code, site_num)
+    INNER JOIN parameter_info USING(parameter_code, poc)
+    INNER JOIN reading_info USING(id)
+WHERE year IN(2014,2015,2016,2017,2018) 
+AND parameter_name IN('Ozone','Nitrogen dioxide (NO2)','Sulfur dioxide','Carbon monoxide','Carbon dioxide');
+
+
+SELECT count(id) from last_four;
 
 
 
