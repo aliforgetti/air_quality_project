@@ -24,7 +24,8 @@ if (username=='admin' and password =='root'):
     query3= 'SELECT * from measurement_info LIMIT 1000;'
     query4= 'SELECT * from reading_info LIMIT 1000;'
     query5= 'SELECT * from validation_info LIMIT 1000;'
-    query6= 'SELECT * FROM last_three_years;'
+    query6= 'SELECT * FROM last_four;'
+    query7= 'SELECT * FROM parameter_info;'
 
 
     sdf = pd.read_sql(query1,conn)
@@ -32,18 +33,20 @@ if (username=='admin' and password =='root'):
     mdf = pd.read_sql(query3,conn)
     rdf = pd.read_sql(query4,conn)
     vdf = pd.read_sql(query5,conn)
+    pdf = pd.read_sql(query7,conn)
     view = pd.read_sql(query6,conn)
 
 
     st.title('AIR QUALITY PROJECT')
     st.markdown('The Environmental Protection Agency (EPA) creates air quality trends using measurements from monitors located across the country. All of this data comes from EPA’s Air Quality System (AQS). Data collection agencies report their data to the EPA via this system and it calculates several types of aggregate (summary) data for EPA internal use. \n')
-    st.markdown('We have divided the dataset into 5 sub-tables -  ')
+    st.markdown('We created a database using this dataset and split it up into the following tables -')
     '''
     1. State_info
     2. Loc_info
     3. Measurement_info
     4. Reading_info
     5. Validation_info
+    6. Parameter_info
     
     '''
     st.subheader('')
@@ -92,6 +95,13 @@ if (username=='admin' and password =='root'):
     if st.sidebar.checkbox('Validation_info'):
         st.text('Validation_info table :')
         vdf
+    if st.sidebar.checkbox('Parameter_info'):
+        st.text('Parameter_info table :')
+        pdf
+    
+
+    st.subheader('')
+    st.subheader('Use the tools below to make changes to the database - ')
 
     if st.checkbox('Click here if you want to check States by state_code'):
         
@@ -102,7 +112,7 @@ if (username=='admin' and password =='root'):
         if state in sdf['state_code']:
             st.write(sdf.loc[sdf['state_code']==state])
 
-    if st.checkbox('Click here to insert new data into *State_info* table.'):
+    if st.checkbox('Click here to insert new data into `State_info` table.'):
         state_code = st.text_input('Enter state_code...')
         state_name = st.text_input('Enter state_name...')
         if state_code != '' and state_name!='':
