@@ -2,7 +2,7 @@
 ## DS 5420-01 Data Management Systems - Spring 2020
 ### Vanderbilt University
 
-Contributers:
+#### Contributors
 
 [Ali Yaqoob](https://www.linkedin.com/in/aliyaqoob/)
 
