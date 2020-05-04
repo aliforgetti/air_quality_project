@@ -2,6 +2,10 @@
 ## DS 5420-01 Data Management Systems - Spring 2020
 ### Vanderbilt University
 
+#### Demo
+This is a short demo of the project.
+![](project-gif.gif)
+
 #### Description
 This project aims to develop an application using a database created from the air quality trends dataset collected and curated by the Environmental Protection Agency (EPA). The Environmental Protection Agency collects data from various sites/monitors and creates air quality trends. This data comes from the EPA’s Air Quality System. The agencies responsible for collecting this data report their data to EPA via their system, and it calculates different types of measurement summaries. 
 
@@ -23,6 +27,8 @@ The categories:
 #### Implementation 
 The final application was built using a database created from the dataset given in Kaggle, with the help of a Python based frontend which used an open-source framework called Streamlit. 
 
-#### Demo
-![](project-gif.gif)
+#### UML
+This is the UML that was used to create the database used in this project. 
+![](Project_UML.png)
+
 
