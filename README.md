@@ -3,8 +3,11 @@
 ### Vanderbilt University
 
 Contributers:
+
 [Ali Yaqoob](https://www.linkedin.com/in/aliyaqoob/)
+
 [Shaswat Rajput](https://www.linkedin.com/in/shaswat-rajput/)
+
 
 #### Demo
 This is a short demo of the project.
