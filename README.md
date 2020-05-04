@@ -4,6 +4,7 @@
 
 #### Demo
 This is a short demo of the project.
+
 ![](project-gif.gif)
 
 #### Description
